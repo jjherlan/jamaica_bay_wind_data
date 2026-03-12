@@ -1,0 +1,11 @@
+# Shinylive build output
+_site/
+
+# R artifacts
+.Rhistory
+.Rproj.user/
+*.Rproj
+
+# OS files
+.DS_Store
+Thumbs.db
