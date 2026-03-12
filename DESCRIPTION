@@ -5,7 +5,7 @@ Description: Interactive Shiny dashboard displaying wind speed, direction,
     and temperature data from the RM-0002 environmental sensor at West Pond,
     Jamaica Bay Wildlife Refuge, NY. Includes time series plots, wind rose
     diagrams, monthly boxplots, and summary statistics.
-Authors@R: person("James J.", "Herlan", role = c("aut", "cre"))
+Authors@R: person("James J.", "Herlan", email = "jjherlan@example.com", role = c("aut", "cre"))
 Imports:
     shiny,
     ggplot2,
