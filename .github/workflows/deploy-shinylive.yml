@@ -41,7 +41,9 @@ jobs:
       - name: Export Shinylive app
         shell: Rscript {0}
         run: |
-          shinylive::export(".", "_site")
+          dir.create("app_bundle")
+          file.copy(c("app.R", "DESCRIPTION", "jamaica_bay_clean.csv"), "app_bundle")
+          shinylive::export("app_bundle", "_site")
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
