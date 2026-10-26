@@ -21,6 +21,8 @@ jobs:
 
       - name: Setup R
         uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
 
       - name: Install system dependencies for R packages
         run: |
@@ -29,20 +31,20 @@ jobs:
             libcurl4-openssl-dev \
             libarchive-dev \
             libssl-dev \
+            libuv1-dev \
             pkg-config
 
       - name: Install R packages
         shell: Rscript {0}
         run: |
+          # Uses the prebuilt Linux binaries that setup-r configures (fast);
+          # do not set repos= here or everything compiles from source.
           install.packages(c("shinylive", "shiny", "ggplot2", "dplyr",
-                             "lubridate", "tidyr", "mgcv"),
-                           repos = "https://cloud.r-project.org")
+                             "lubridate", "tidyr", "mgcv"))
 
       - name: Export Shinylive app
         shell: Rscript {0}
         run: |
-          # Bundle only what the app needs; raw CSVs would otherwise be
-          # downloaded by every visitor (73 MB in March 2026).
           dir.create("app_bundle")
           file.copy(c("app.R", "DESCRIPTION", "jamaica_bay_clean.csv"), "app_bundle")
           shinylive::export("app_bundle", "_site")
