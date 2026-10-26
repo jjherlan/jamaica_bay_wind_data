@@ -18,8 +18,10 @@ DEVICE       <- "rm-0002"
 # NULL keeps everything, matching the dashboard's behaviour to date.
 DEPLOY_START <- NULL
 DIGITS       <- 3          # sensor values are float32; 3 decimals loses nothing real
-TEMP_MIN     <- -100       # temperature below this = probe failure (e.g. -144.15)
+TEMP_MIN     <- -40        # below this = probe failure (e.g. -144.15, -93.7); NYC record low ~ -26
+TEMP_MAX     <- 60         # above this = probe failure (e.g. 179.8 on 2026-05-20)
 PRES_MIN     <- 900        # pressure below this = probe failure (~780-824 mb)
+PRES_MAX     <- 1100       # above this = probe failure (e.g. 1270.8)
 
 # ---- Locate project folder (works for Rscript, Task Scheduler and VS Code) --
 file_arg <- grep("^--file=", commandArgs(FALSE), value = TRUE)
@@ -60,7 +62,7 @@ read_raw <- function(f) {
   p <- strsplit(lines, ",", fixed = TRUE)
   g <- function(i) vapply(p, function(r) if (length(r) >= i) r[i] else NA_character_, "")
   d <- data.frame(received_at = g(3), local_time = trimws(g(4)), f_cnt = g(5),
-                  dir = g(7), humidity = g(8), pressure = g(9), speed = g(10),
+                  battery = g(6), dir = g(7), humidity = g(8), pressure = g(9), speed = g(10),
                   temperature = g(11), stringsAsFactors = FALSE)
   # Drop non-measurement rows (e.g. the 9/18/2025 field note "SETUP IN LIVING SHORELINE")
   d[grepl("^[0-9]+$", d$f_cnt), ]
@@ -73,18 +75,21 @@ n_raw <- nrow(raw)
 # overlapping downloads write the same reading as "12:00" and "12:00:32".
 raw <- raw[!duplicated(raw$received_at), ]
 
-for (v in c("dir", "humidity", "pressure", "speed", "temperature")) raw[[v]] <- clean_num(raw[[v]])
-raw$temperature[!is.na(raw$temperature) & raw$temperature < TEMP_MIN] <- NA
-raw$pressure[!is.na(raw$pressure) & raw$pressure < PRES_MIN] <- NA
+for (v in c("battery", "dir", "humidity", "pressure", "speed", "temperature")) raw[[v]] <- clean_num(raw[[v]])
+raw$temperature[!is.na(raw$temperature) &
+                (raw$temperature < TEMP_MIN | raw$temperature > TEMP_MAX)] <- NA
+raw$pressure[!is.na(raw$pressure) &
+             (raw$pressure < PRES_MIN | raw$pressure > PRES_MAX)] <- NA
 
 raw$t <- parse_time(raw$local_time)
 raw <- raw[!is.na(raw$t), ]
 if (!is.null(DEPLOY_START)) raw <- raw[raw$t >= as.POSIXct(DEPLOY_START, tz = "UTC"), ]
 raw <- raw[order(raw$t, raw$received_at), ]
 
-out <- c("local_time,dir,humidity,pressure,speed,temperature",
+# battery (V) is used by the dashboard's Sensor Issues tab
+out <- c("local_time,dir,humidity,pressure,speed,temperature,battery",
          paste(raw$local_time, fmt(raw$dir), fmt(raw$humidity), fmt(raw$pressure),
-               fmt(raw$speed), fmt(raw$temperature), sep = ","))
+               fmt(raw$speed), fmt(raw$temperature), fmt(raw$battery), sep = ","))
 
 logm(sprintf("%d raw files, %d sensor rows -> %d unique observations (%s to %s); temp NA %d, pressure NA %d",
              length(raw_files), n_raw, nrow(raw), raw$local_time[1], raw$local_time[nrow(raw)],
